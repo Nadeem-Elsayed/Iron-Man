@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gesture-inference-api
+  labels:
+    app: gesture-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gesture-api
+  template:
+    metadata:
+      labels:
+        app: gesture-api
+    spec:
+      containers:
+      - name: gesture-api-container
+        image: <YOUR_AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/gesture-control:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        env:
+        - name: MODEL_ENV
+          value: "production"

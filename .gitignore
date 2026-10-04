@@ -1,0 +1,38 @@
+# ========================
+# Python & Environments
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# ========================
+# Datasets (CRITICAL)
+# ========================
+# Ignores the 140GB+ of raw images, videos, and CSVs
+data/
+*.csv
+*.jpg
+*.jpeg
+*.png
+*.mp4
+
+# ========================
+# PyTorch Model Weights
+# ========================
+# Ignores the heavy ResNet backbone saves
+weights/
+cloud_backend/weights/
+*.pth
+*.pt
+*.ckpt
+
+# ========================
+# IDE & OS Files
+# ========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

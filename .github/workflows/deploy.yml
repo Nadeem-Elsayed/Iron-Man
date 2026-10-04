@@ -1,0 +1,67 @@
+name: Build and Deploy to AWS EKS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'cloud_backend/**'
+      - 'kubernetes/**'
+      - '.github/workflows/deploy.yml'
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: gesture-control
+  EKS_CLUSTER_NAME: gesture-cluster
+
+jobs:
+  build-and-deploy:
+    name: Build, Push, and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, Tag, and Push Docker Image to ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build a Docker container and push it to ECR
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f cloud_backend/Dockerfile .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Update Kubeconfig
+      run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+    - name: Deploy to Amazon EKS
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Apply the LoadBalancer service
+        kubectl apply -f kubernetes/service.yaml
+        
+        # Apply the base deployment 
+        kubectl apply -f kubernetes/deployment.yaml
+        
+        # Force the deployment to use the new Docker image tagged with the commit SHA
+        kubectl set image deployment/gesture-inference-api \
+          gesture-api-container=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          
+        # Verify rollout status
+        kubectl rollout status deployment/gesture-inference-api
