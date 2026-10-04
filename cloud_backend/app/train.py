@@ -71,9 +71,10 @@ def main():
 
     # Hardware routing: Uses GPU if available, otherwise falls back to CPU
     # For AMD GPUs on Windows, PyTorch defaults to CPU unless configured via ROCm (WSL2) or DirectML
-    device = torch_directml.device()
-    device_id = device.index if device.index is not None else 0
-    print(f"Hardware Accelerator: {torch_directml.device_name(device_id)}")
+    target_gpu_index = 1 
+    device = torch_directml.device(target_gpu_index)
+    
+    print(f"Hardware Accelerator: {torch_directml.device_name(target_gpu_index)}")
     
     # Common hyperparameters
     criterion = nn.CrossEntropyLoss()
@@ -81,27 +82,36 @@ def main():
     if args.stream == '2d':
         print("Initializing 2D Pipeline (HaGRID)...")
         data_dir = "../../data/raw/hagrid"
-        
-        # Batch size 32 is a safe ceiling that maximizes throughput without saturating 16GB of VRAM
         dataloader, _ = get_hagrid_dataloader(data_dir=data_dir, batch_size=32)
         
         model = HaGRIDResNet(num_classes=5)
-        # We only pass the final layer's parameters to the optimizer because the backbone is frozen
+        
+        # CRITICAL FIX: Move to GPU *before* creating the optimizer
+        model.to(device) 
+        
         optimizer = optim.Adam(model.backbone.fc.parameters(), lr=args.lr)
         save_path = "../weights/hagrid_resnet50.pth"
         
     elif args.stream == '3d':
         print("Initializing 3D Pipeline (Jester)...")
-        csv_path = "../../data/raw/jester/jester-v1-train.csv"
-        frames_dir = "../../data/raw/jester/20bn-jester-v1"
+        csv_path = "../../data/raw/jester/Train.csv"
+        frames_dir = "../../data/raw/jester/Train"
         
-        # 3D Tensors take significantly more memory; dropping batch size to 8 prevents OOM errors
+        print("1. Loading CSV and checking dataset size...")
         dataloader = get_jester_dataloader(csv_path=csv_path, frames_dir=frames_dir, batch_size=8)
+        print(f" -> Found {len(dataloader.dataset)} active swipe gestures.")
         
+        print("2. Instantiating ResNet3D model...")
         model = JesterResNet3D(num_classes=3)
+        
+        print("3. Mapping 3D model to AMD GPU... (This may take a moment)")
+        model.to(device)
+        print(" -> Model successfully locked to DirectML!")
+        
         optimizer = optim.Adam(model.backbone.fc.parameters(), lr=args.lr)
         save_path = "../weights/jester_r3d_18.pth"
 
+    # CRITICAL: This must be at the very bottom of main(), un-indented from the if/elif blocks!
     train_model(model, dataloader, criterion, optimizer, args.epochs, device, save_path)
 
 if __name__ == "__main__":

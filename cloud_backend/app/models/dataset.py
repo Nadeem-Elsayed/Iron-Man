@@ -21,8 +21,22 @@ def get_hagrid_dataloader(data_dir: str, batch_size: int = 32):
     # ImageFolder automatically assigns labels based on your folder names
     dataset = datasets.ImageFolder(root=data_dir, transform=transform_2d)
     
-    # Utilizing 8 workers to saturate your Ryzen 5 CPU cores during data fetching
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
+    # Utilizing workers to saturate python train.py --stream 2d --epochs 1Ryzen 5 CPU cores during data fetching
+    loader = DataLoader(
+        dataset, 
+        batch_size=batch_size, 
+        shuffle=True, 
+        
+        # 4 workers is the sweet spot for a 6-core Ryzen 5 7600
+        num_workers=4, 
+        
+        # CRITICAL: Keep this False to prevent the Windows BSOD
+        pin_memory=False, 
+        
+        # Keeps the worker processes alive between batches instead of 
+        # constantly killing and respawning them (massive speedup on Windows)
+        persistent_workers=True 
+    )
     return loader, dataset.classes
 
 class JesterSequenceDataset(Dataset):
@@ -36,7 +50,7 @@ class JesterSequenceDataset(Dataset):
         self.transform = transform_2d
         
         # Load the CSV and filter only for the active sweeping gestures
-        df = pd.read_csv(csv_path, sep=';', header=None, names=['video_id', 'label'])
+        df = pd.read_csv(csv_path)
         self.data = df[df['label'].isin(target_labels)].reset_index(drop=True)
         
         # Create a mapping dictionary for labels (e.g., "Swiping Left" -> 0)
@@ -71,10 +85,21 @@ class JesterSequenceDataset(Dataset):
             
         # Stack frames into a 4D tensor: [Sequence_Length, Channels, Height, Width]
         sequence_tensor = torch.stack(frames)
+        
+        # CRITICAL FIX: Reorder dimensions to [Channels, Sequence_Length, Height, Width]
+        sequence_tensor = sequence_tensor.permute(1, 0, 2, 3)
+        
         return sequence_tensor, label_idx
 
 def get_jester_dataloader(csv_path: str, frames_dir: str, batch_size: int = 8):
-    target_labels = ["Swiping Left", "Swiping Right"]
+    target_labels = ["Swiping Left", "Swiping Right", "Doing other things"]
     dataset = JesterSequenceDataset(csv_path, frames_dir, target_labels)
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
+    loader = DataLoader(
+        dataset, 
+        batch_size=8, # Keep this at 8 for 3D tensors 
+        shuffle=True, 
+        num_workers=4, 
+        pin_memory=False, 
+        persistent_workers=True 
+    )
     return loader
