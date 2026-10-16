@@ -18,6 +18,9 @@ COPY cloud_backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
     --extra-index-url https://download.pytorch.org/whl/cpu
 
+# Copy the trained 2D static model weights (142MB)
+COPY cloud_backend/weights/hagrid_resnet50_finetuned.pth ./weights/hagrid_resnet50_finetuned.pth
+
 # Copy the backend application code
 COPY cloud_backend/app/ ./app/
 

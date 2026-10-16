@@ -3,31 +3,42 @@ import torch.nn as nn
 from torchvision.models import resnet50, ResNet50_Weights
 
 class HaGRIDResNet(nn.Module):
-    def __init__(self, num_classes: int = 5):
+    def __init__(self, num_classes: int = 5, train_layer4: bool = False):
         """
         Initializes the transfer learning architecture.
-        num_classes: 5 (thumb_index2, take_picture, hand_heart, mute, no_gesture)
+        num_classes: 5 (hand_heart, mute, no_gesture, take_picture, thumb_index2)
+        train_layer4: If True, unfreezes layer4 of ResNet50 for fine-tuning fine spatial finger details.
         """
         super().__init__()
+        self.train_layer4 = train_layer4
         
         # 1. Load the pre-trained ResNet50 backbone
-        # We use DEFAULT weights to get the most up-to-date ImageNet training
         self.backbone = resnet50(weights=ResNet50_Weights.DEFAULT)
         
         # 2. Freeze the backbone parameters
-        # This locks the weights so they don't update during training. 
-        # It saves massive amounts of GPU memory and prevents us from destroying 
-        # the model's pre-existing ability to recognize basic visual features.
         for param in self.backbone.parameters():
             param.requires_grad = False
             
-        # 3. Swap the classification head
-        # The original ResNet50 outputs 1000 classes. We extract the number of 
-        # input features feeding into that final layer (2048), drop the old layer, 
-        # and attach a new Linear layer designed specifically for our 5 classes.
-        # By default, new layers have requires_grad=True, meaning ONLY this layer will train.
+        # 3. Optionally unfreeze layer4 for fine-tuning
+        if self.train_layer4:
+            for param in self.backbone.layer4.parameters():
+                param.requires_grad = True
+
+        # 4. Swap the classification head
         in_features = self.backbone.fc.in_features
         self.backbone.fc = nn.Linear(in_features, num_classes)
+
+    def train(self, mode: bool = True):
+        super().train(mode)
+        # Keep earlier backbone layers and BatchNorm statistics in eval mode
+        self.backbone.eval()
+        if self.train_layer4:
+            self.backbone.layer4.train()
+            for m in self.backbone.layer4.modules():
+                if isinstance(m, nn.BatchNorm2d):
+                    m.eval()
+        self.backbone.fc.train()
+        return self
 
     def forward(self, x):
         """

@@ -5,6 +5,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 venv/
+.venv/
 env/
 .env
 
@@ -18,6 +19,8 @@ data/
 *.jpeg
 *.png
 *.mp4
+!local_client/cool_graphics/*.png
+!local_client/cool_graphics/*.ico
 
 # ========================
 # PyTorch Model Weights

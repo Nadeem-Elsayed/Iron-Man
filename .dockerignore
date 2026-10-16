@@ -1,0 +1,27 @@
+# Ignore heavy dataset directories (25+ GB)
+data/
+data/**
+*.zip
+
+# Ignore local virtual environment and python cache
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore git and ide directories
+.git/
+.github/
+.vscode/
+
+# Ignore local client code and logs
+local_client/
+*.log
+
+# Ignore heavy 3D sequence weights (only copy 2D model)
+cloud_backend/weights/jester*.pth
+cloud_backend/weights/hagrid_resnet50.pth
+cloud_backend/weights/hagrid_resnet50_epoch*.pth
+cloud_backend/weights/hagrid_resnet50_finetuned_epoch*.pth
+
