@@ -183,10 +183,29 @@ def main():
 
     if is_pinned and hwnd:
         try:
-            cv2.setWindowProperty(window_name, cv2.WND_PROP_TOPMOST, 1)
+            # Course 1: True Floating Picture-in-Picture Tool Overlay
+            # 1. Remove Minimize & Maximize buttons from window style to eliminate DWM freeze
+            GWL_STYLE = -16
+            WS_MINIMIZEBOX = 0x00020000
+            WS_MAXIMIZEBOX = 0x00010000
+            cur_style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_STYLE)
+            ctypes.windll.user32.SetWindowLongW(hwnd, GWL_STYLE, cur_style & ~WS_MINIMIZEBOX & ~WS_MAXIMIZEBOX)
+
+            # 2. Apply WS_EX_TOOLWINDOW (0x00000080) and WS_EX_TOPMOST (0x00000008):
+            #    - Eliminates taskbar desync and removes window from Win+D desktop minimizing
+            #    - Maintains pure topmost floating HUD without stealing OS window focus
+            GWL_EXSTYLE = -20
+            WS_EX_TOOLWINDOW = 0x00000080
+            WS_EX_TOPMOST = 0x00000008
+            cur_ex = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+            ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, (cur_ex | WS_EX_TOOLWINDOW | WS_EX_TOPMOST) & ~0x08000000)
+
+            # 3. Position and update window frame
             cv2.resizeWindow(window_name, win_w, win_h)
             cv2.moveWindow(window_name, pos_x, pos_y)
-            ctypes.windll.user32.SetWindowPos(hwnd, -1, pos_x, pos_y, win_w, win_h, 0x0040 | 0x0010)
+            # SWP_FRAMECHANGED (0x0020) | SWP_SHOWWINDOW (0x0040) | SWP_NOACTIVATE (0x0010)
+            ctypes.windll.user32.SetWindowPos(hwnd, -1, pos_x, pos_y, win_w, win_h, 0x0020 | 0x0040 | 0x0010)
+            cv2.setWindowProperty(window_name, cv2.WND_PROP_TOPMOST, 1)
         except Exception as e:
             print(f"Window positioning notice: {e}")
 
@@ -250,14 +269,7 @@ def main():
             # Submit latest frame to background inference worker without blocking UI
             worker.submit_frame(frame, args.threshold, actions_enabled)
 
-            # If minimized by any OS event, restore to top-right without stealing focus
-            if is_pinned and hwnd:
-                try:
-                    if ctypes.windll.user32.IsIconic(hwnd):
-                        ctypes.windll.user32.ShowWindow(hwnd, 9)  # SW_RESTORE
-                        ctypes.windll.user32.SetWindowPos(hwnd, -1, pos_x, pos_y, win_w, win_h, 0x0040 | 0x0010)
-                except Exception:
-                    pass
+
 
             # Check dynamic window client size in case user resized it
             if hwnd:
@@ -300,10 +312,9 @@ def main():
                 is_pinned = not is_pinned
                 cv2.setWindowProperty(window_name, cv2.WND_PROP_TOPMOST, 1 if is_pinned else 0)
                 if is_pinned and hwnd:
-                    ctypes.windll.user32.BringWindowToTop(hwnd)
-                    ctypes.windll.user32.SetWindowPos(hwnd, -1, pos_x, pos_y, win_w, win_h, 0x0040)
+                    ctypes.windll.user32.SetWindowPos(hwnd, -1, pos_x, pos_y, win_w, win_h, 0x0040 | 0x0010)
                 elif not is_pinned and hwnd:
-                    ctypes.windll.user32.SetWindowPos(hwnd, -2, 0, 0, 0, 0, 0x0001 | 0x0002) # HWND_NOTOPMOST
+                    ctypes.windll.user32.SetWindowPos(hwnd, -2, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)  # HWND_NOTOPMOST
                 print(f"--> Always-On-Top Pinned: {'YES' if is_pinned else 'NO'}")
             elif key == ord('h'):
                 show_hints = not show_hints
