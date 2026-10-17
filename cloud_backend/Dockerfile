@@ -30,7 +30,10 @@ EXPOSE 8000
 # Include AWS Lambda Web Adapter to run standard FastAPI in AWS Lambda container
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.0 /lambda-adapter /opt/extensions/lambda-adapter
 ENV PORT=8000
+ENV AWS_LWA_PORT=8000
+ENV AWS_LWA_ASYNC_INIT=true
 ENV AWS_LWA_READINESS_CHECK_PATH=/health
+ENV TORCH_HOME=/tmp/torch
 
 # Command to run the Uvicorn server
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

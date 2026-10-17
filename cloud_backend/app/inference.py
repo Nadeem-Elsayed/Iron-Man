@@ -151,7 +151,7 @@ class GestureInferenceEngine:
 
         if target_2d_weights and os.path.exists(target_2d_weights):
             print(f"[InferenceEngine] Loading 2D weights: {target_2d_weights}")
-            self.model_2d = HaGRIDResNet(num_classes=5).to(self.device)
+            self.model_2d = HaGRIDResNet(num_classes=5, pretrained=False).to(self.device)
             state = torch.load(target_2d_weights, map_location=self.device, weights_only=False)
             self.model_2d.load_state_dict(state, strict=True)
             self.model_2d.eval()

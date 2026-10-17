@@ -3,17 +3,19 @@ import torch.nn as nn
 from torchvision.models import resnet50, ResNet50_Weights
 
 class HaGRIDResNet(nn.Module):
-    def __init__(self, num_classes: int = 5, train_layer4: bool = False):
+    def __init__(self, num_classes: int = 5, train_layer4: bool = False, pretrained: bool = True):
         """
         Initializes the transfer learning architecture.
         num_classes: 5 (hand_heart, mute, no_gesture, take_picture, thumb_index2)
         train_layer4: If True, unfreezes layer4 of ResNet50 for fine-tuning fine spatial finger details.
+        pretrained: If True, loads ImageNet backbone weights. Pass False for inference checkpoints.
         """
         super().__init__()
         self.train_layer4 = train_layer4
         
-        # 1. Load the pre-trained ResNet50 backbone
-        self.backbone = resnet50(weights=ResNet50_Weights.DEFAULT)
+        # 1. Load the ResNet50 backbone
+        weights = ResNet50_Weights.DEFAULT if pretrained else None
+        self.backbone = resnet50(weights=weights)
         
         # 2. Freeze the backbone parameters
         for param in self.backbone.parameters():
