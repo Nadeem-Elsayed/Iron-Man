@@ -33,11 +33,17 @@ class IronManHUD:
     ):
         self.target_w, self.target_h = target_size
         if graphics_dir is None:
-            graphics_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cool_graphics")
+            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                graphics_dir = os.path.join(sys._MEIPASS, "cool_graphics")
+            else:
+                graphics_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cool_graphics")
         self.graphics_dir = graphics_dir
 
         if audio_dir is None:
-            audio_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "audio_files")
+            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                audio_dir = os.path.join(sys._MEIPASS, "audio_files")
+            else:
+                audio_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "audio_files")
         self.audio_dir = audio_dir
 
         self.icon_png_path = os.path.join(self.graphics_dir, "IronManIcon.png")

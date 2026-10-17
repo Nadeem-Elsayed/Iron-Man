@@ -90,7 +90,10 @@ class StarkAudioManager:
     def __init__(self, audio_dir: Optional[str] = None, enabled: bool = True, volume: int = 300):
         self.enabled = enabled
         if audio_dir is None:
-            audio_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "audio_files")
+            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+                audio_dir = os.path.join(sys._MEIPASS, "audio_files")
+            else:
+                audio_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "audio_files")
         self.audio_dir = audio_dir
         self.volume = volume
 

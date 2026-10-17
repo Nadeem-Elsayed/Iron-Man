@@ -39,3 +39,9 @@ cloud_backend/weights/
 .idea/
 .DS_Store
 Thumbs.db
+
+# ========================
+# PyInstaller Builds
+# ========================
+build/
+dist/
