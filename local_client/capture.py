@@ -133,8 +133,8 @@ class ThreadedCloudWorker:
 
 def main():
     parser = argparse.ArgumentParser(description="IronMan High-FPS Cloud Webcam Client")
-    parser.add_argument("--url", type=str, default=os.getenv("IRONMAN_API_URL", "http://localhost:8000/predict"),
-                        help="FastAPI microservice endpoint (default: http://localhost:8000/predict or IRONMAN_API_URL env var)")
+    parser.add_argument("--url", type=str, default=os.getenv("IRONMAN_API_URL", "https://nxebhxb63n4xfilodiwddn4jgq0rrcij.lambda-url.us-east-2.on.aws/predict"),
+                        help="FastAPI microservice endpoint (default: AWS Lambda production URL or IRONMAN_API_URL env var)")
     parser.add_argument("--threshold", type=float, default=0.85,
                         help="Confidence threshold to trigger OS action (default: 0.85)")
     parser.add_argument("--cooldown", type=float, default=1.2,
