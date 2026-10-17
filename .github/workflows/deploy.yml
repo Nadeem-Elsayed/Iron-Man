@@ -1,4 +1,4 @@
-name: Build and Deploy to AWS EKS
+name: Build and Deploy to AWS Lambda
 
 on:
   push:
@@ -6,13 +6,14 @@ on:
       - main
     paths:
       - 'cloud_backend/**'
-      - 'kubernetes/**'
       - '.github/workflows/deploy.yml'
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-east-2
   ECR_REPOSITORY: gesture-control
-  EKS_CLUSTER_NAME: gesture-cluster
+  LAMBDA_FUNCTION_NAME: ironman-gesture-api
+  LAMBDA_ROLE_ARN: arn:aws:iam::323443471817:role/IronManLambdaRole
 
 jobs:
   build-and-deploy:
@@ -40,28 +41,63 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        # Build a Docker container and push it to ECR
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f cloud_backend/Dockerfile .
+        echo "Building container image..."
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f cloud_backend/Dockerfile .
+        
+        echo "Pushing images to Amazon ECR..."
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-    - name: Update Kubeconfig
-      run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
-
-    - name: Deploy to Amazon EKS
+    - name: Deploy to AWS Lambda
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        # Apply the LoadBalancer service
-        kubectl apply -f kubernetes/service.yaml
-        
-        # Apply the base deployment 
-        kubectl apply -f kubernetes/deployment.yaml
-        
-        # Force the deployment to use the new Docker image tagged with the commit SHA
-        kubectl set image deployment/gesture-inference-api \
-          gesture-api-container=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "Checking if Lambda function ${{ env.LAMBDA_FUNCTION_NAME }} exists..."
+        if aws lambda get-function --function-name ${{ env.LAMBDA_FUNCTION_NAME }} >/dev/null 2>&1; then
+          echo "Updating existing Lambda function code..."
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "Waiting for function code update to complete..."
+          aws lambda wait function-updated --function-name ${{ env.LAMBDA_FUNCTION_NAME }}
+        else
+          echo "Creating new Lambda function ${{ env.LAMBDA_FUNCTION_NAME }}..."
+          aws lambda create-function \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --package-type Image \
+            --code ImageUri=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            --role ${{ env.LAMBDA_ROLE_ARN }} \
+            --timeout 30 \
+            --memory-size 2048
+          echo "Waiting for function to be active..."
+          aws lambda wait function-active-v2 --function-name ${{ env.LAMBDA_FUNCTION_NAME }}
+        fi
+
+        echo "Ensuring public Function URL is configured..."
+        URL_EXISTS=$(aws lambda get-function-url-config --function-name ${{ env.LAMBDA_FUNCTION_NAME }} --query "FunctionUrl" --output text 2>/dev/null || echo "")
+        if [ -z "$URL_EXISTS" ]; then
+          echo "Creating Function URL with CORS..."
+          aws lambda create-function-url-config \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --auth-type NONE \
+            --cors '{"AllowOrigins":["*"],"AllowMethods":["*"],"AllowHeaders":["*"]}'
           
-        # Verify rollout status
-        kubectl rollout status deployment/gesture-inference-api
+          echo "Granting public invoke permission..."
+          aws lambda add-permission \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --statement-id FunctionURLAllowPublicAccess \
+            --action lambda:InvokeFunctionUrl \
+            --principal "*" \
+            --function-url-auth-type NONE
+        fi
+
+        FUNCTION_URL=$(aws lambda get-function-url-config --function-name ${{ env.LAMBDA_FUNCTION_NAME }} --query "FunctionUrl" --output text)
+        echo "=========================================================="
+        echo "DEPLOYMENT SUCCESSFUL!"
+        echo "Public Endpoint: $FUNCTION_URL"
+        echo "Health Check:    ${FUNCTION_URL}health"
+        echo "Predict URL:     ${FUNCTION_URL}predict"
+        echo "Docs URL:        ${FUNCTION_URL}docs"
+        echo "=========================================================="
