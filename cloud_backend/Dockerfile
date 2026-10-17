@@ -28,7 +28,7 @@ COPY cloud_backend/app/ ./app/
 EXPOSE 8000
 
 # Include AWS Lambda Web Adapter to run standard FastAPI in AWS Lambda container
-COPY --from=public.ecr.aws/awslabs/aws-lambda-web-adapter:0.9.0 /lambda-adapter /opt/extensions/lambda-adapter
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.9.0 /lambda-adapter /opt/extensions/lambda-adapter
 ENV PORT=8000
 ENV AWS_LWA_READINESS_CHECK_PATH=/health
 
