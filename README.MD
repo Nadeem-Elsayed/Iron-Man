@@ -37,3 +37,17 @@ Execution Library: pyautogui will be utilized to inject discrete OS commands and
 Trigger Mechanism: Instead of continuous cursor tracking, gestures will strictly fire atomic, discrete actions (e.g., Alt + Tab, taking screenshots, minimizing windows).
 
 State Management: A stateful dispatcher with built-in debounce logic (cooldown timers) will sit between the PyTorch output and pyautogui to prevent a single gesture from triggering multiple duplicate hotkey executions across consecutive video frames.
+
+5. Attributions & Media Credits
+Special thanks to the creators and artists whose stock video visual effects and audio sound effects enhance the Stark OS Iron Man client interface:
+
+- Audio Sound Effects (Pixabay):
+  - Interface Open 1: Created by Vadim_Makes_Sound on Pixabay
+  - Interface Open 2: Created by SoundReality on Pixabay
+  - Action Sound 1: Created by SoundReality on Pixabay
+  - Action Sound 2: Created by juniorsoundays on Pixabay
+
+- Visual Effects & HUD Overlays (Vecteezy):
+  - Startup Progress Bar VFX: Created by Muhammad Ihsan, <a href="https://www.vecteezy.com/free-videos/cyberpunk">Cyberpunk Stock Videos by Vecteezy</a>
+  - Ambient UI Visor Overlay: Created by tunnelmotions loops, <a href="https://www.vecteezy.com/video/76610636-military-hud-animation-for-war-documentary-showing-tactical-display-without-clear-visual-context-or-elements-during-combat-simulation">military-hud-animation-for-war-documentary-showing-tactical-display-without-clear-visual-context-or-elements-during-combat-simulation Stock Videos by Vecteezy</a>
+  - Circular Hologram HUD Reticle: Created by Patchakorn Phomin, <a href="https://www.vecteezy.com/video/2015841-elements-hud-circle-hologram-user-interface-technology">elements-hud-circle-hologram-user-interface-technology Stock Videos by Vecteezy</a>

@@ -7,21 +7,39 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+try:
+    from audio_manager import StarkAudioManager
+except ImportError:
+    from local_client.audio_manager import StarkAudioManager
+
 
 class IronManHUD:
     """
     Minimalist Stark Industries HUD:
     - Pure video overlays: Progress Bar (startup boot), IronInterface (ambient loop).
     - Dynamic action lock-on dials (IronManHud1) triggered on ANY gesture.
+    - Low-latency sound design via StarkAudioManager (startup boot and delayed action SFX).
     - Zero UI clutter: all headers, online badges, FPS counters, debug menus, and popups removed.
     - Optional bottom-left shortcut hint toggleable via 'H' or --hide-hints.
     """
 
-    def __init__(self, target_size=(480, 270), graphics_dir=None):
+    def __init__(
+        self,
+        target_size=(480, 270),
+        graphics_dir=None,
+        audio_dir=None,
+        enable_audio: bool = True,
+        action_sound_delay: float = 0.15
+    ):
         self.target_w, self.target_h = target_size
         if graphics_dir is None:
             graphics_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cool_graphics")
         self.graphics_dir = graphics_dir
+
+        if audio_dir is None:
+            audio_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "audio_files")
+        self.audio_dir = audio_dir
+        self.action_sound_delay = action_sound_delay
 
         self.icon_png_path = os.path.join(self.graphics_dir, "IronManIcon.png")
         self.icon_ico_path = os.path.join(self.graphics_dir, "IronManIcon.ico")
@@ -34,6 +52,10 @@ class IronManHUD:
 
         # Pre-cache video frames in RAM
         self._init_video_caches()
+
+        # Audio Manager initialization
+        self.audio = StarkAudioManager(audio_dir=self.audio_dir, enabled=enable_audio)
+        self._startup_audio_played = False
 
         # State management
         self.boot_frame_idx = 0
@@ -186,6 +208,9 @@ class IronManHUD:
             "zone_secondary": zone_secondary
         }
 
+        # Play both action sound effects after short delay
+        self.audio.play_action(delay=self.action_sound_delay)
+
     def _blend_overlay_at(self, canvas: np.ndarray, overlay_patch: np.ndarray, x: int, y: int, opacity: float = 1.0):
         ph, pw = overlay_patch.shape[:2]
         ch, cw = canvas.shape[:2]
@@ -229,6 +254,11 @@ class IronManHUD:
             canvas = cv2.resize(frame, (self.target_w, self.target_h), interpolation=cv2.INTER_LINEAR)
         else:
             canvas = frame.copy()
+
+        # Trigger startup sound effects once on initial application render
+        if not self._startup_audio_played:
+            self._startup_audio_played = True
+            self.audio.play_startup()
 
         # 1. Startup Boot Sequence (Progress Bar.webm)
         if not self.boot_complete and self.pb_frames:
@@ -274,3 +304,8 @@ class IronManHUD:
             return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
 
         return canvas
+
+    def close(self):
+        """Release audio and multimedia handles cleanly."""
+        if hasattr(self, 'audio') and self.audio:
+            self.audio.close()

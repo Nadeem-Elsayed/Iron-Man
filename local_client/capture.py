@@ -145,6 +145,10 @@ def main():
                         help="Disable Always-on-Top top-right Picture-in-Picture mode")
     parser.add_argument("--hide-hints", action="store_true", default=False,
                         help="Hide the shortcut hint legend in the bottom left")
+    parser.add_argument("--no-sound", action="store_true", default=False,
+                        help="Disable Stark OS audio sound effects")
+    parser.add_argument("--sound-delay", type=float, default=0.15,
+                        help="Delay in seconds before action sound effects trigger (default: 0.15)")
     parser.add_argument("--camera", type=int, default=0,
                         help="Webcam device index (default: 0)")
     args = parser.parse_args()
@@ -177,7 +181,11 @@ def main():
     pos_y = 30
 
     # Initialize HUD Renderer & attach Iron Man Icon to window and taskbar
-    hud = IronManHUD(target_size=(win_w, win_h))
+    hud = IronManHUD(
+        target_size=(win_w, win_h),
+        enable_audio=not args.no_sound,
+        action_sound_delay=args.sound_delay
+    )
     if hwnd:
         hud.set_window_icon(hwnd)
 
@@ -228,6 +236,7 @@ def main():
     print(f"  Confidence Threshold: {args.threshold:.2f}")
     print(f"  Always-on-Top Pinned: {'YES (Top-Right HUD)' if is_pinned else 'NO'}")
     print(f"  OS Actions: {'ENABLED' if actions_enabled else 'DISABLED (Observation Mode)'}")
+    print(f"  Audio Sound FX: {'ENABLED (Delay: ' + str(args.sound_delay) + 's)' if not args.no_sound else 'DISABLED'}")
     print("  Controls: [A] Actions  [P] Pin  [H] Toggle Hints  [T] Threshold  [Q] Quit")
     print("  Emergency Exit: [Ctrl + Alt + Q] (Global killswitch from ANY window)")
     print("=" * 65)
@@ -327,6 +336,7 @@ def main():
                 print(f"--> Threshold set to: {args.threshold:.2f}")
 
     finally:
+        hud.close()
         worker.stop()
         cap.release()
         cv2.destroyAllWindows()
