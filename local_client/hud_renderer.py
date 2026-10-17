@@ -209,7 +209,7 @@ class IronManHUD:
         }
 
         # Play both action sound effects after short delay
-        self.audio.play_action(delay=self.action_sound_delay)
+        self.audio.play_action(delay=self.action_sound_delay, gesture=gesture_name)
 
     def _blend_overlay_at(self, canvas: np.ndarray, overlay_patch: np.ndarray, x: int, y: int, opacity: float = 1.0):
         ph, pw = overlay_patch.shape[:2]
