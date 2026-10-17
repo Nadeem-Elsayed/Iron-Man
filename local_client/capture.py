@@ -147,8 +147,10 @@ def main():
                         help="Hide the shortcut hint legend in the bottom left")
     parser.add_argument("--no-sound", action="store_true", default=False,
                         help="Disable Stark OS audio sound effects")
-    parser.add_argument("--sound-delay", type=float, default=0.15,
-                        help="Delay in seconds before action sound effects trigger (default: 0.15)")
+    parser.add_argument("--startup-volume", type=int, default=300,
+                        help="Startup sound effect volume (0-1000, default: 300)")
+    parser.add_argument("--warmup-seconds", type=float, default=2.0,
+                        help="Startup grace period in seconds before gesture actions can fire (default: 2.0)")
     parser.add_argument("--camera", type=int, default=0,
                         help="Webcam device index (default: 0)")
     args = parser.parse_args()
@@ -184,7 +186,7 @@ def main():
     hud = IronManHUD(
         target_size=(win_w, win_h),
         enable_audio=not args.no_sound,
-        action_sound_delay=args.sound_delay
+        startup_volume=args.startup_volume
     )
     if hwnd:
         hud.set_window_icon(hwnd)
@@ -235,13 +237,16 @@ def main():
     print(f"  Target Endpoint: {args.url}")
     print(f"  Confidence Threshold: {args.threshold:.2f}")
     print(f"  Always-on-Top Pinned: {'YES (Top-Right HUD)' if is_pinned else 'NO'}")
+    print(f"  Startup Grace Period: {args.warmup_seconds:.1f}s (Disarmed during boot)")
     print(f"  OS Actions: {'ENABLED' if actions_enabled else 'DISABLED (Observation Mode)'}")
-    print(f"  Audio Sound FX: {'ENABLED (Delay: ' + str(args.sound_delay) + 's)' if not args.no_sound else 'DISABLED'}")
+    print(f"  Startup Audio: {'ENABLED (Quiet)' if not args.no_sound else 'DISABLED'}")
     print("  Controls: [A] Actions  [P] Pin  [H] Toggle Hints  [T] Threshold  [Q] Quit")
     print("  Emergency Exit: [Ctrl + Alt + Q] (Global killswitch from ANY window)")
     print("=" * 65)
 
-    last_time = time.time()
+    app_start_time = time.time()
+    warmup_announced = False
+    last_time = app_start_time
     last_fg_window = None
     last_hud_gesture = "no_gesture"
     last_hud_trigger_time = 0.0
@@ -272,13 +277,17 @@ def main():
             now = time.time()
             last_time = now
 
+            # Check startup warmup grace period (actions disarmed during first N seconds)
+            is_warmed_up = (now - app_start_time) >= args.warmup_seconds
+            if is_warmed_up and not warmup_announced:
+                warmup_announced = True
+                print(f"--> [IronMan] Startup warmup complete ({args.warmup_seconds:.1f}s). OS Gesture Actions are now ARMED.")
+
             # Flip horizontally for natural mirror view
             frame = cv2.flip(frame, 1)
 
-            # Submit latest frame to background inference worker without blocking UI
-            worker.submit_frame(frame, args.threshold, actions_enabled)
-
-
+            # Submit latest frame to background inference worker (actions strictly disarmed during warmup)
+            worker.submit_frame(frame, args.threshold, actions_enabled and is_warmed_up)
 
             # Check dynamic window client size in case user resized it
             if hwnd:
@@ -294,8 +303,8 @@ def main():
             gesture = res.get("gesture", "no_gesture")
             confidence = res.get("confidence", 0.0)
 
-            # Trigger HUD dials on EVERY type of gesture when recognized with high confidence
-            if gesture != "no_gesture" and confidence >= args.threshold:
+            # Trigger HUD dials on EVERY type of gesture when recognized with high confidence (armed after warmup)
+            if is_warmed_up and gesture != "no_gesture" and confidence >= args.threshold:
                 if (gesture != last_hud_gesture) or (now - last_hud_trigger_time > 1.2):
                     hud.trigger_action_hud(gesture)
                     last_hud_gesture = gesture

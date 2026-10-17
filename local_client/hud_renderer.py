@@ -29,7 +29,7 @@ class IronManHUD:
         graphics_dir=None,
         audio_dir=None,
         enable_audio: bool = True,
-        action_sound_delay: float = 0.15
+        startup_volume: int = 300
     ):
         self.target_w, self.target_h = target_size
         if graphics_dir is None:
@@ -39,7 +39,6 @@ class IronManHUD:
         if audio_dir is None:
             audio_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "audio_files")
         self.audio_dir = audio_dir
-        self.action_sound_delay = action_sound_delay
 
         self.icon_png_path = os.path.join(self.graphics_dir, "IronManIcon.png")
         self.icon_ico_path = os.path.join(self.graphics_dir, "IronManIcon.ico")
@@ -53,8 +52,8 @@ class IronManHUD:
         # Pre-cache video frames in RAM
         self._init_video_caches()
 
-        # Audio Manager initialization
-        self.audio = StarkAudioManager(audio_dir=self.audio_dir, enabled=enable_audio)
+        # Audio Manager initialization (gentle startup sound)
+        self.audio = StarkAudioManager(audio_dir=self.audio_dir, enabled=enable_audio, volume=startup_volume)
         self._startup_audio_played = False
 
         # State management
@@ -207,9 +206,6 @@ class IronManHUD:
             "zone_primary": zone_primary,
             "zone_secondary": zone_secondary
         }
-
-        # Play both action sound effects after short delay
-        self.audio.play_action(delay=self.action_sound_delay, gesture=gesture_name)
 
     def _blend_overlay_at(self, canvas: np.ndarray, overlay_patch: np.ndarray, x: int, y: int, opacity: float = 1.0):
         ph, pw = overlay_patch.shape[:2]
