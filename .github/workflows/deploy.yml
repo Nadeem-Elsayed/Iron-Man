@@ -87,13 +87,7 @@ jobs:
         URL_EXISTS=$(aws lambda get-function-url-config --function-name ${{ env.LAMBDA_FUNCTION_NAME }} --query "FunctionUrl" --output text 2>/dev/null || echo "")
         if [ -z "$URL_EXISTS" ]; then
           echo "Creating Function URL with CORS..."
-          cat << 'EOF' > /tmp/cors.json
-{
-  "AllowOrigins": ["*"],
-  "AllowMethods": ["*"],
-  "AllowHeaders": ["*"]
-}
-EOF
+          echo '{"AllowOrigins":["*"],"AllowMethods":["*"],"AllowHeaders":["*"]}' > /tmp/cors.json
           aws lambda create-function-url-config \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
             --auth-type NONE \
