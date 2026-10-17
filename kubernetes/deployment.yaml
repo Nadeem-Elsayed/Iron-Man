@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: gesture-api-container
-        image: <YOUR_AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/gesture-control:latest
+        image: 323443471817.dkr.ecr.us-east-2.amazonaws.com/gesture-control:latest
         ports:
         - containerPort: 8000
         readinessProbe:

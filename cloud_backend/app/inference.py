@@ -141,6 +141,8 @@ class GestureInferenceEngine:
         # 2. Load 2D Static Model
         self.model_2d = None
         target_2d_weights = weights_2d_path or find_weights_path([
+            "weights/hagrid_resnet50_finetuned.pth",
+            "./weights/hagrid_resnet50_finetuned.pth",
             "../weights/hagrid_resnet50_finetuned.pth",
             "cloud_backend/weights/hagrid_resnet50_finetuned.pth",
             "../weights/hagrid_resnet50.pth",
