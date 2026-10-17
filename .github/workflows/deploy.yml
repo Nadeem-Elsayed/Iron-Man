@@ -35,6 +35,14 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
+    - name: Download Model Weights from S3
+      run: |
+        echo "Creating weights directory..."
+        mkdir -p cloud_backend/weights
+        echo "Downloading weights from S3..."
+        aws s3 cp s3://ironman-models-323443471817/hagrid_resnet50_finetuned.pth cloud_backend/weights/hagrid_resnet50_finetuned.pth
+        ls -lh cloud_backend/weights/
+
     - name: Build, Tag, and Push Docker Image to ECR
       id: build-image
       env:
