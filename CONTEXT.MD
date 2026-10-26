@@ -8,7 +8,7 @@
    - `thumb_index2`: Show/Hide Desktop (`win + d`)
    - `take_photo` / `take_picture`: OS Snipping Tool (`win + shift + s`)
    - `mute`: Toggle Volume Mute (`volumemute`)
-   - `heart` / `hand_heart`: Open new browser tab (Instagram)
+   - `heart` / `hand_heart`: Launch or switch to Steam application (`steam://open/main`)
    - `no_gesture`: Control/Resting state (No action)
 
 2. **3D Dynamic Stream (20BN-Jester Dataset - 4 Classes):**

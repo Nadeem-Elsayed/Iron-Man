@@ -50,7 +50,7 @@ graph TD
 | **`mute`** | HaGRID Fine-Tuned | `Volume Mute / Unmute` | Toggles master Windows audio |
 | **`take_photo`** | HaGRID Fine-Tuned | `Win + Shift + S` | Triggers Windows Snipping Tool screenshot |
 | **`thumb_index2`** | HaGRID Fine-Tuned | `Win + D` | Shows / minimizes desktop workspace |
-| **`heart`** | HaGRID Fine-Tuned | Custom Interface Hotkey | Stark OS HUD interface trigger |
+| **`heart`** | HaGRID Fine-Tuned | Launch / Focus Steam | Opens or brings the Steam client to the foreground |
 | **`no_gesture`** | HaGRID Fine-Tuned | *None* | Passive observation mode |
 
 ---
