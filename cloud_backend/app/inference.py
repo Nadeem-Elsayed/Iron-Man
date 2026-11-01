@@ -81,14 +81,29 @@ class GestureInferenceEngine:
         "doing_other_things"  # 3 (Control - Moving)
     ]
 
-    # HaGRID 5-class mapping (Alphabetical order from datasets.ImageFolder: hand_heart, mute, no_gesture, take_picture, thumb_index2)
-    LABELS_2D = [
+    # HaGRID 5-class mapping (v1.0.0 baseline)
+    LABELS_2D_V1 = [
         "heart",              # 0 (hand_heart)
         "mute",               # 1 (mute)
         "no_gesture",         # 2 (no_gesture)
         "take_photo",         # 3 (take_picture)
         "thumb_index2"        # 4 (thumb_index2)
     ]
+
+    # HaGRID 9-class mapping (v2.0.0 release: alphabetical order from datasets.ImageFolder)
+    LABELS_2D_V2 = [
+        "grabbing",           # 0 (grabbing)
+        "heart",              # 1 (hand_heart)
+        "mute",               # 2 (mute)
+        "no_gesture",         # 3 (no_gesture)
+        "point",              # 4 (point)
+        "stop",               # 5 (stop)
+        "take_photo",         # 6 (take_picture)
+        "thumb_index2",       # 7 (thumb_index2)
+        "xsign"               # 8 (xsign)
+    ]
+
+    LABELS_2D = LABELS_2D_V2
 
     def __init__(
         self,
@@ -141,6 +156,10 @@ class GestureInferenceEngine:
         # 2. Load 2D Static Model
         self.model_2d = None
         target_2d_weights = weights_2d_path or find_weights_path([
+            "weights/hagrid_resnet50_v2.pth",
+            "./weights/hagrid_resnet50_v2.pth",
+            "../weights/hagrid_resnet50_v2.pth",
+            "cloud_backend/weights/hagrid_resnet50_v2.pth",
             "weights/hagrid_resnet50_finetuned.pth",
             "./weights/hagrid_resnet50_finetuned.pth",
             "../weights/hagrid_resnet50_finetuned.pth",
@@ -151,8 +170,14 @@ class GestureInferenceEngine:
 
         if target_2d_weights and os.path.exists(target_2d_weights):
             print(f"[InferenceEngine] Loading 2D weights: {target_2d_weights}")
-            self.model_2d = HaGRIDResNet(num_classes=5, pretrained=False).to(self.device)
             state = torch.load(target_2d_weights, map_location=self.device, weights_only=False)
+            num_classes = state['backbone.fc.weight'].shape[0] if 'backbone.fc.weight' in state else len(self.LABELS_2D)
+            if num_classes == 9:
+                self.LABELS_2D = list(self.LABELS_2D_V2)
+            elif num_classes == 5:
+                self.LABELS_2D = list(self.LABELS_2D_V1)
+            print(f"[InferenceEngine] Configured 2D model with {num_classes} classes: {self.LABELS_2D}")
+            self.model_2d = HaGRIDResNet(num_classes=num_classes, pretrained=False).to(self.device)
             self.model_2d.load_state_dict(state, strict=True)
             self.model_2d.eval()
             print(f"[InferenceEngine] 2D Model ready on {self.device}.")

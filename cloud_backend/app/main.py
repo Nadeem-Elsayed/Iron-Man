@@ -96,7 +96,7 @@ async def predict_2d_gesture(
     """
     Real-time 2D Static Pose Inference Endpoint:
     - Accepts multipart/form-data image frame
-    - Classifies static gesture among 5 classes: [heart, mute, no_gesture, take_photo, thumb_index2]
+    - Classifies static gesture among 9 classes: [grabbing, heart, mute, no_gesture, point, stop, take_photo, thumb_index2, xsign]
     - Returns predicted gesture, confidence score, full probability distribution, and inference latency.
     """
     if engine is None or engine.model_2d is None:

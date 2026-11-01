@@ -8,6 +8,7 @@ block_cipher = None
 added_datas = [
     ('local_client/cool_graphics', 'cool_graphics'),
     ('local_client/audio_files', 'audio_files'),
+    ('local_client/hand_landmarker.task', '.'),
 ]
 
 # Exclude massive backend training frameworks to keep the client exe sleek & lightweight
@@ -34,6 +35,9 @@ a = Analysis(
     datas=added_datas,
     hiddenimports=[
         'PIL._tkinter_finder',
+        'mediapipe',
+        'mediapipe.tasks.python',
+        'mediapipe.tasks.python.vision',
     ],
     hookspath=[],
     hooksconfig={},

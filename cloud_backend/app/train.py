@@ -127,6 +127,10 @@ def train_model(model, dataloader, criterion, optimizer, num_epochs, device, sav
         gc.collect()
 
     print(f"\nTraining complete. Final weights saved to {save_path}")
+    if "hagrid_resnet50_v2" in save_path:
+        sync_path = os.path.join(os.path.dirname(save_path), "hagrid_resnet50_finetuned.pth")
+        torch.save(model.state_dict(), sync_path)
+        print(f"--> Synchronized weights to: {sync_path}")
 
 
 def main():
@@ -172,16 +176,26 @@ def main():
             max_samples_per_class=args.max_samples_per_class
         )
         target_names = classes
-        print(f" -> Classes: {classes}")
+        num_classes = len(classes)
+        print(f" -> Classes ({num_classes}): {classes}")
 
-        model = HaGRIDResNet(num_classes=5, train_layer4=args.train_layer4).to(device)
+        model = HaGRIDResNet(num_classes=num_classes, train_layer4=args.train_layer4).to(device)
 
-        # Default to resuming from hagrid_resnet50.pth if resume not specified
-        default_resume = resolve_path("../weights/hagrid_resnet50.pth")
+        # Default to resuming from hagrid_resnet50_finetuned.pth or hagrid_resnet50.pth
+        default_resume = resolve_path("../weights/hagrid_resnet50_finetuned.pth")
+        if not os.path.exists(default_resume):
+            default_resume = resolve_path("../weights/hagrid_resnet50.pth")
+
         resume_target = args.resume or (default_resume if os.path.exists(default_resume) else None)
         if resume_target and os.path.exists(resume_target):
             print(f"Resuming weights from: {resume_target}")
-            model.load_state_dict(torch.load(resume_target, map_location=device, weights_only=False))
+            state_dict = torch.load(resume_target, map_location=device, weights_only=False)
+            if 'backbone.fc.weight' in state_dict and state_dict['backbone.fc.weight'].shape[0] != num_classes:
+                old_classes = state_dict['backbone.fc.weight'].shape[0]
+                print(f" -> Preserving backbone weights, adapting FC head ({old_classes} -> {num_classes} classes)")
+                del state_dict['backbone.fc.weight']
+                del state_dict['backbone.fc.bias']
+            model.load_state_dict(state_dict, strict=False)
 
         params = [{'params': model.backbone.fc.parameters(), 'lr': args.lr}]
         if args.train_layer4:

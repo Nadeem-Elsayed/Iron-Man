@@ -11,6 +11,16 @@ import cv2
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dispatcher import ActionDispatcher
 from hud_renderer import IronManHUD
+from direction_resolver import DirectionResolver
+
+# Optional local high-performance DirectML GPU inference engine
+try:
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+    sys.path.insert(0, os.path.join(repo_root, "cloud_backend", "app"))
+    from inference import GestureInferenceEngine
+    HAS_LOCAL_ENGINE = True
+except Exception:
+    HAS_LOCAL_ENGINE = False
 
 
 class RECT(ctypes.Structure):
@@ -18,11 +28,25 @@ class RECT(ctypes.Structure):
                 ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
 
 
+# Per-gesture confidence activation thresholds
+GESTURE_THRESHOLDS = {
+    "xsign": 0.70,        # Crossed arms/wrists: 0.70 ensures responsive, effortless tab closing
+    "thumb_index2": 0.75, # Clean desktop toggle
+    "heart": 0.75,
+    "hand_heart": 0.75,
+    "mute": 0.75,
+    "take_photo": 0.75,
+    "take_picture": 0.75,
+    "grabbing": 0.75,
+    "stop": 0.75
+}
+
+
 class ThreadedCloudWorker:
     """
     Decoupled background inference worker:
-    1. Uses a persistent HTTP session (requests.Session) with connection pooling.
-    2. Resizes frames to 320x320 before uploading (90% lower bandwidth, instant upload).
+    1. Direct local DirectML GPU inference (<2ms) when 9-class weights exist.
+    2. HTTP cloud microservice fallback when configured or running standalone.
     3. Runs asynchronously in a daemon thread so the camera render loop maintains 30-60 FPS without stutter.
     """
     def __init__(self, url: str, threshold: float, dispatcher: ActionDispatcher, actions_enabled: bool = True):
@@ -31,30 +55,62 @@ class ThreadedCloudWorker:
         self.dispatcher = dispatcher
         self.actions_enabled = actions_enabled
 
-        self.session = requests.Session()
         self.lock = threading.Lock()
         self.latest_frame = None
         self.has_new_frame = False
         self.running = True
+
+        self.local_engine = None
+        # Auto-detect local weights if url is default or "local"
+        is_default_cloud = ("lambda-url" in url) or (url == "local")
+        if HAS_LOCAL_ENGINE and is_default_cloud:
+            try:
+                print("[IronMan Engine] Initializing local 9-class DirectML GPU inference engine...")
+                self.local_engine = GestureInferenceEngine()
+                if self.local_engine.model_2d is not None:
+                    print(f"[IronMan Engine] Local Engine ACTIVE on {self.local_engine.device}! (9 Classes: {self.local_engine.LABELS_2D})")
+                else:
+                    self.local_engine = None
+            except Exception as e:
+                print(f"[IronMan Engine] Local engine initialization notice: {e}")
+                self.local_engine = None
+
+        self.session = requests.Session() if self.local_engine is None else None
+
+        # Temporal consensus counters (filters out transient motion between gestures)
+        self.streak_gesture = None
+        self.streak_count = 0
+        self.REQUIRED_STREAKS = {
+            "xsign": 2,          # 2 frames (~60ms) - swift tab closing
+            "grabbing": 5,       # 5 frames (~160ms) - deliberate held fist, prevents motion trigger
+            "mute": 4,           # 4 frames (~130ms) - deliberate hold, prevents false trigger when crossing arms
+            "thumb_index2": 3,   # 3 frames (~100ms) - deliberate desktop toggle
+            "hand_heart": 3,
+            "heart": 3,
+            "take_photo": 3,
+            "take_picture": 3,
+            "stop": 4
+        }
 
         self.latest_result = {
             "gesture": "no_gesture",
             "confidence": 0.0,
             "is_actionable": False,
             "latency_ms": 0.0,
-            "status": "Connecting..."
+            "status": "Online (Local GPU)" if self.local_engine else "Connecting..."
         }
 
         self.thread = threading.Thread(target=self._worker_loop, daemon=True)
         self.thread.start()
 
-    def submit_frame(self, frame, threshold: float, actions_enabled: bool):
-        """Non-blocking submission of the latest frame."""
+    def submit_frame(self, frame, threshold: float, actions_enabled: bool, num_hands: int = 1):
+        """Non-blocking submission of the latest frame with multi-hand context."""
         if self.lock.acquire(blocking=False):
             try:
                 self.latest_frame = frame
                 self.threshold = threshold
                 self.actions_enabled = actions_enabled
+                self.num_hands = num_hands
                 self.has_new_frame = True
             finally:
                 self.lock.release()
@@ -68,19 +124,22 @@ class ThreadedCloudWorker:
 
     def stop(self):
         self.running = False
-        self.session.close()
+        if self.session:
+            self.session.close()
 
     def _worker_loop(self):
         while self.running:
             job_frame = None
             job_thresh = self.threshold
             job_actions = self.actions_enabled
+            job_hands = 1
 
             with self.lock:
                 if self.has_new_frame:
                     job_frame = self.latest_frame
                     job_thresh = self.threshold
                     job_actions = self.actions_enabled
+                    job_hands = getattr(self, "num_hands", 1)
                     self.has_new_frame = False
 
             if job_frame is None:
@@ -88,45 +147,98 @@ class ThreadedCloudWorker:
                 continue
 
             try:
-                # Downsample to 320x320 for lightning-fast network transport (ResNet normalizes to 224x224 anyway)
-                resized = cv2.resize(job_frame, (320, 320), interpolation=cv2.INTER_AREA)
-                _, encoded = cv2.imencode('.jpg', resized, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
-                files = {'file': ('frame.jpg', encoded.tobytes(), 'image/jpeg')}
+                if self.local_engine:
+                    t0 = time.perf_counter()
+                    # Query engine with 0.50 floor to maintain rich real-time confidence telemetry
+                    res = self.local_engine.predict_2d(job_frame, confidence_threshold=0.50)
+                    rtt_ms = (time.perf_counter() - t0) * 1000.0
 
-                t0 = time.perf_counter()
-                resp = self.session.post(
-                    f"{self.url}?threshold={job_thresh}",
-                    files=files,
-                    timeout=0.5
-                )
-                rtt_ms = (time.perf_counter() - t0) * 1000.0
+                    gesture = res.get("gesture", "no_gesture")
+                    confidence = res.get("confidence", 0.0)
+                    target_thresh = GESTURE_THRESHOLDS.get(gesture, job_thresh)
+                    is_actionable = (gesture != "no_gesture") and (confidence >= target_thresh)
 
-                if resp.status_code == 200:
-                    data = resp.json()
-                    gesture = data.get("gesture", "no_gesture")
-                    confidence = data.get("confidence", 0.0)
-                    is_actionable = data.get("is_actionable", False)
+                    # Two-handed context guard: Mute, Point, and Grabbing are strictly single-handed gestures.
+                    # If two hands are visible (e.g. crossing arms or finger guns), suppress mute, point, and grabbing.
+                    if job_hands >= 2 and gesture in ("mute", "point", "grabbing"):
+                        is_actionable = False
+
+                    # Temporal consensus filter: deliberate hold confirmation
+                    if is_actionable:
+                        if gesture == self.streak_gesture:
+                            self.streak_count += 1
+                        else:
+                            self.streak_gesture = gesture
+                            self.streak_count = 1
+                    else:
+                        self.streak_count = 0
+                        self.streak_gesture = None
+
+                    req_streak = self.REQUIRED_STREAKS.get(gesture, 3)
+                    gesture_confirmed = is_actionable and (self.streak_count >= req_streak)
 
                     just_fired = False
-                    if is_actionable and job_actions:
+                    if gesture_confirmed and job_actions:
                         just_fired = self.dispatcher.execute(gesture)
+                        if just_fired:
+                            print(f"[IronMan Action] >>> MODEL TRIGGERED: '{gesture}' ({confidence*100:.1f}%) [Held: {self.streak_count} frames] <<<")
+                            self.streak_count = 0  # Reset streak after firing to prevent runaway repeat triggers
 
                     with self.lock:
                         self.latest_result = {
                             "gesture": gesture,
                             "confidence": confidence,
-                            "is_actionable": is_actionable,
+                            "target_thresh": target_thresh,
+                            "is_actionable": gesture_confirmed,
                             "just_fired": just_fired,
                             "latency_ms": rtt_ms,
-                            "status": "Online"
+                            "status": f"Local GPU ({rtt_ms:.1f}ms)"
                         }
                 else:
-                    with self.lock:
-                        self.latest_result["status"] = f"HTTP {resp.status_code}"
+                    # Downsample to 320x320 for lightning-fast network transport (ResNet normalizes to 224x224 anyway)
+                    resized = cv2.resize(job_frame, (320, 320), interpolation=cv2.INTER_AREA)
+                    _, encoded = cv2.imencode('.jpg', resized, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+                    files = {'file': ('frame.jpg', encoded.tobytes(), 'image/jpeg')}
+
+                    t0 = time.perf_counter()
+                    resp = self.session.post(
+                        f"{self.url}?threshold={job_thresh}",
+                        files=files,
+                        timeout=0.5
+                    )
+                    rtt_ms = (time.perf_counter() - t0) * 1000.0
+
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        gesture = data.get("gesture", "no_gesture")
+                        confidence = data.get("confidence", 0.0)
+                        is_actionable = data.get("is_actionable", False)
+
+                        just_fired = False
+                        if is_actionable and job_actions:
+                            just_fired = self.dispatcher.execute(gesture)
+                            if just_fired:
+                                print(f"[IronMan Action] >>> MODEL TRIGGERED: '{gesture}' ({confidence*100:.1f}%) <<<")
+
+                        with self.lock:
+                            self.latest_result = {
+                                "gesture": gesture,
+                                "confidence": confidence,
+                                "is_actionable": is_actionable,
+                                "just_fired": just_fired,
+                                "latency_ms": rtt_ms,
+                                "status": "Online"
+                            }
+                    else:
+                        with self.lock:
+                            self.latest_result["status"] = f"HTTP {resp.status_code}"
 
             except requests.exceptions.RequestException:
                 with self.lock:
                     self.latest_result["status"] = "Offline / Retrying"
+            except Exception as e:
+                with self.lock:
+                    self.latest_result["status"] = f"Notice: {e}"
 
             time.sleep(0.005)
 
@@ -135,8 +247,8 @@ def main():
     parser = argparse.ArgumentParser(description="IronMan High-FPS Cloud Webcam Client")
     parser.add_argument("--url", type=str, default=os.getenv("IRONMAN_API_URL", "https://nxebhxb63n4xfilodiwddn4jgq0rrcij.lambda-url.us-east-2.on.aws/predict"),
                         help="FastAPI microservice endpoint (default: AWS Lambda production URL or IRONMAN_API_URL env var)")
-    parser.add_argument("--threshold", type=float, default=0.85,
-                        help="Confidence threshold to trigger OS action (default: 0.85)")
+    parser.add_argument("--threshold", type=float, default=0.75,
+                        help="Confidence threshold to trigger OS action (default: 0.75)")
     parser.add_argument("--cooldown", type=float, default=1.2,
                         help="Debounce cooldown seconds between actions (default: 1.2)")
     parser.add_argument("--no-actions", action="store_true", default=False,
@@ -221,6 +333,7 @@ def main():
 
     # Initialize the dispatcher mapping gestures to OS commands
     dispatcher = ActionDispatcher(cooldown=args.cooldown)
+    direction_resolver = DirectionResolver()
     actions_enabled = not args.no_actions
     show_hints = not args.hide_hints
 
@@ -250,6 +363,7 @@ def main():
     last_fg_window = None
     last_hud_gesture = "no_gesture"
     last_hud_trigger_time = 0.0
+    last_diagnostic_time = 0.0
 
     try:
         while True:
@@ -286,8 +400,31 @@ def main():
             # Flip horizontally for natural mirror view
             frame = cv2.flip(frame, 1)
 
+            # Local Real-Time Direction & Posture Analysis (Modal Alt-Tab & Pointing Vectors)
+            dir_res = direction_resolver.analyze_frame(frame)
+            if actions_enabled and is_warmed_up:
+                local_action = None
+                # Only evaluate single-handed Alt-Tab trigger/navigation if exactly 1 hand is present
+                if dir_res.get("num_hands") == 1:
+                    if dir_res.get("is_grabbing"):
+                        local_action = "grabbing"
+                    elif dir_res.get("is_stop"):
+                        local_action = "stop"
+                    elif dir_res.get("is_pointing"):
+                        d = dir_res.get("direction")
+                        if d in ("point_right", "point_left"):
+                            local_action = d
+
+                if local_action:
+                    fired = dispatcher.execute(local_action)
+                    if fired:
+                        print(f"[IronMan Action] >>> RESOLVER TRIGGERED: '{local_action}' <<<")
+                        hud.trigger_action_hud(local_action)
+                        last_hud_gesture = local_action
+                        last_hud_trigger_time = now
+
             # Submit latest frame to background inference worker (actions strictly disarmed during warmup)
-            worker.submit_frame(frame, args.threshold, actions_enabled and is_warmed_up)
+            worker.submit_frame(frame, args.threshold, actions_enabled and is_warmed_up, num_hands=dir_res.get("num_hands", 1))
 
             # Check dynamic window client size in case user resized it
             if hwnd:
@@ -302,13 +439,26 @@ def main():
             res = worker.get_result()
             gesture = res.get("gesture", "no_gesture")
             confidence = res.get("confidence", 0.0)
+            target_thresh = res.get("target_thresh", GESTURE_THRESHOLDS.get(gesture, args.threshold))
+            just_fired = res.get("just_fired", False)
 
-            # Trigger HUD dials on EVERY type of gesture when recognized with high confidence (armed after warmup)
-            if is_warmed_up and gesture != "no_gesture" and confidence >= args.threshold:
-                if (gesture != last_hud_gesture) or (now - last_hud_trigger_time > 1.2):
-                    hud.trigger_action_hud(gesture)
-                    last_hud_gesture = gesture
-                    last_hud_trigger_time = now
+            # Trigger HUD dials on gestures recognized with target confidence (armed after warmup)
+            if is_warmed_up and gesture != "no_gesture":
+                # Outside Alt-Tab mode, point is not an active action, so don't flood the HUD or console
+                if gesture == "point" and not dispatcher.alt_tab_active:
+                    pass
+                elif confidence >= target_thresh:
+                    if (gesture != last_hud_gesture) or (now - last_hud_trigger_time > 1.2):
+                        hud.trigger_action_hud(gesture)
+                        last_hud_gesture = gesture
+                        last_hud_trigger_time = now
+                        action_flag = "ACTION EXECUTED" if just_fired else "Detected"
+                        print(f"[IronMan HUD] >>> CONFIRMED '{gesture}' ({confidence*100:.1f}%) -> {action_flag} <<<")
+                elif confidence >= 0.50:
+                    # Informative real-time telemetry if a gesture is detected slightly below the action threshold
+                    if (now - last_diagnostic_time > 1.0) and (gesture != "point"):
+                        last_diagnostic_time = now
+                        print(f"[IronMan HUD] Detecting '{gesture}' ({confidence*100:.1f}%) [Threshold: {target_thresh*100:.0f}% - hold pose clearly in frame]")
             elif gesture == "no_gesture":
                 last_hud_gesture = "no_gesture"
 
@@ -345,6 +495,8 @@ def main():
                 print(f"--> Threshold set to: {args.threshold:.2f}")
 
     finally:
+        direction_resolver.close()
+        dispatcher.cleanup()
         hud.close()
         worker.stop()
         cap.release()

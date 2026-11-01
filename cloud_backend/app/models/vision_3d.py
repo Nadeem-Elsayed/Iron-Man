@@ -5,7 +5,7 @@ from torchvision.models import resnet50, ResNet50_Weights
 
 class JesterSequenceLSTM(nn.Module):
     """
-    DirectML-compatible hybrid CNN + 1D-Conv temporal model for 4-class Jester gesture recognition.
+    DirectML-compatible hyHbrid CNN + 1D-Conv temporal model for 4-class Jester gesture recognition.
 
     Architecture constraints (DO NOT VIOLATE — see CONTEXT.md §3):
       - No Conv3d: DirectML fails on 5D volumetric tensors.

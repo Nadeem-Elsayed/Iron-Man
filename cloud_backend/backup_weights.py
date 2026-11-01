@@ -3,6 +3,7 @@ import hashlib
 import json
 import shutil
 import time
+import argparse
 
 def compute_sha256(filepath):
     h = hashlib.sha256()
@@ -11,25 +12,32 @@ def compute_sha256(filepath):
             h.update(chunk)
     return h.hexdigest()
 
-def backup_v1_weights():
+def backup_weights(version="2.0.0"):
     weights_dir = os.path.abspath("cloud_backend/weights")
-    backup_dir = os.path.abspath("weights_v1.0.0_backup")
+    backup_dir = os.path.abspath(f"weights_v{version}_backup")
     os.makedirs(backup_dir, exist_ok=True)
 
-    production_models = [
-        "hagrid_resnet50_finetuned.pth",
-        "jester_lstm_spatial_tuned.pth"
-    ]
+    if version.startswith("2."):
+        production_models = [
+            "hagrid_resnet50_v2.pth",
+            "hagrid_resnet50_finetuned.pth",
+            "jester_lstm_spatial_tuned.pth"
+        ]
+    else:
+        production_models = [
+            "hagrid_resnet50_finetuned.pth",
+            "jester_lstm_spatial_tuned.pth"
+        ]
 
     manifest = {
-        "version": "1.0.0",
+        "version": version,
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "production_weights": {},
         "all_checkpoints": {}
     }
 
     files = sorted([f for f in os.listdir(weights_dir) if f.endswith(".pth")])
-    print(f"Found {len(files)} model weight files in {weights_dir}")
+    print(f"Found {len(files)} model weight files in {weights_dir} for Release {version}")
 
     for filename in files:
         filepath = os.path.join(weights_dir, filename)
@@ -59,12 +67,14 @@ def backup_v1_weights():
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
 
-    # Also save a copy inside cloud_backend/weights
-    with open(os.path.join(weights_dir, "WEIGHTS_v1.0.0_MANIFEST.json"), "w") as f:
+    with open(os.path.join(weights_dir, f"WEIGHTS_v{version}_MANIFEST.json"), "w") as f:
         json.dump(manifest, f, indent=2)
 
     print(f"\nSuccessfully generated manifest at: {manifest_path}")
     print(f"Backed up production weights to: {backup_dir}")
 
 if __name__ == "__main__":
-    backup_v1_weights()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--version", type=str, default="2.0.0")
+    args = parser.parse_args()
+    backup_weights(version=args.version)
