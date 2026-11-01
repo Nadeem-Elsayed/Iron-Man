@@ -1,6 +1,18 @@
 import os
+import sys
+import types
 import cv2
 import numpy as np
+
+# Stub matplotlib if not loaded to prevent PyInstaller import failure in MediaPipe
+if "matplotlib" not in sys.modules:
+    try:
+        import matplotlib
+    except ImportError:
+        dummy_mpl = types.ModuleType("matplotlib")
+        dummy_mpl.pyplot = types.ModuleType("matplotlib.pyplot")
+        sys.modules["matplotlib"] = dummy_mpl
+        sys.modules["matplotlib.pyplot"] = dummy_mpl.pyplot
 
 try:
     import mediapipe as mp
@@ -32,9 +44,17 @@ class DirectionResolver:
         self.detector = None
 
         if model_path is None:
-            import sys
-            if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-                model_path = os.path.join(sys._MEIPASS, "hand_landmarker.task")
+            if getattr(sys, 'frozen', False):
+                base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+                candidates = [
+                    os.path.join(base_dir, "hand_landmarker.task"),
+                    os.path.join(os.path.dirname(sys.executable), "hand_landmarker.task"),
+                    os.path.join(os.path.dirname(sys.executable), "_internal", "hand_landmarker.task")
+                ]
+                for cand in candidates:
+                    if os.path.exists(cand):
+                        model_path = cand
+                        break
             else:
                 model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hand_landmarker.task")
 

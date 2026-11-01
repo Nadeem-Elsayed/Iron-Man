@@ -1,11 +1,22 @@
 import os
 import sys
+import types
 import time
 import threading
 import argparse
 import ctypes
 import requests
 import cv2
+
+# Stub matplotlib if not loaded to prevent PyInstaller import failure in MediaPipe
+if "matplotlib" not in sys.modules:
+    try:
+        import matplotlib
+    except ImportError:
+        dummy_mpl = types.ModuleType("matplotlib")
+        dummy_mpl.pyplot = types.ModuleType("matplotlib.pyplot")
+        sys.modules["matplotlib"] = dummy_mpl
+        sys.modules["matplotlib.pyplot"] = dummy_mpl.pyplot
 
 # Ensure local_client is in python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

@@ -1,15 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
 import sys
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
+
+mediapipe_datas = collect_data_files('mediapipe')
+mediapipe_submodules = collect_submodules('mediapipe')
 
 # Asset directories to bundle inside the executable package
 added_datas = [
     ('local_client/cool_graphics', 'cool_graphics'),
     ('local_client/audio_files', 'audio_files'),
     ('local_client/hand_landmarker.task', '.'),
-]
+] + mediapipe_datas
 
 # Exclude massive backend training frameworks to keep the client exe sleek & lightweight
 excluded_modules = [
@@ -36,12 +40,13 @@ a = Analysis(
     hiddenimports=[
         'PIL._tkinter_finder',
         'mediapipe',
+        'mediapipe.tasks',
         'mediapipe.tasks.python',
         'mediapipe.tasks.python.vision',
-    ],
+    ] + mediapipe_submodules,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=['local_client/rthook_matplotlib.py'],
     excludes=excluded_modules,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

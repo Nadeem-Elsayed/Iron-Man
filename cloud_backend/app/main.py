@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="IronMan Gesture Inference Cloud API",
     description="Production-grade, low-latency microservice for real-time 2D hand gesture recognition.",
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan
 )
 
@@ -84,7 +84,7 @@ async def health_check():
         "device": str(engine.device),
         "model_2d_ready": engine.model_2d is not None,
         "supported_gestures_2d": engine.LABELS_2D,
-        "version": "1.0.0"
+        "version": "2.0.0"
     }
 
 
