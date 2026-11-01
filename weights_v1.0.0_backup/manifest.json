@@ -1,0 +1,176 @@
+{
+  "version": "1.0.0",
+  "timestamp": "2026-11-01T04:26:00Z",
+  "production_weights": {
+    "hagrid_resnet50_finetuned.pth": {
+      "size_bytes": 142652456,
+      "size_mb": 136.04,
+      "sha256": "dac639f04e696f09cdb353b41ba4e4327f1fe8d61a741c17713051af6aa98115",
+      "last_modified": "Thu Oct 15 21:44:43 2026"
+    },
+    "jester_lstm_spatial_tuned.pth": {
+      "size_bytes": 171357032,
+      "size_mb": 163.42,
+      "sha256": "64183f508d98f732316b4938ebb093828f5e2016b78a3206a37864d44ce7cda1",
+      "last_modified": "Fri Oct 16 00:51:56 2026"
+    }
+  },
+  "all_checkpoints": {
+    "hagrid_resnet50.pth": {
+      "size_bytes": 142643264,
+      "size_mb": 136.04,
+      "sha256": "15897253c3eee05432a93ecc4ff420146ff1681b2cccffc6a5a8bce911c95aa3",
+      "last_modified": "Sun Oct  4 03:17:11 2026"
+    },
+    "hagrid_resnet50_finetuned.pth": {
+      "size_bytes": 142652456,
+      "size_mb": 136.04,
+      "sha256": "dac639f04e696f09cdb353b41ba4e4327f1fe8d61a741c17713051af6aa98115",
+      "last_modified": "Thu Oct 15 21:44:43 2026"
+    },
+    "hagrid_resnet50_finetuned_epoch1.pth": {
+      "size_bytes": 142648004,
+      "size_mb": 136.04,
+      "sha256": "d126e1bc19cb5d565fc18ee0f967fb3266bfe7f631c655e6dd79d2d0a22de49f",
+      "last_modified": "Thu Oct 15 21:42:33 2026"
+    },
+    "hagrid_resnet50_finetuned_epoch2.pth": {
+      "size_bytes": 142652484,
+      "size_mb": 136.04,
+      "sha256": "cc3aa0dd4546f6c6dcb67db7c34d54573cccde48b2199f45c8c7c67eab0aaa6a",
+      "last_modified": "Thu Oct 15 21:44:44 2026"
+    },
+    "jester_lstm.pth": {
+      "size_bytes": 152318128,
+      "size_mb": 145.26,
+      "sha256": "d26a7a0f0b74d84d509f324048eaf2b114318588b702f84d30b3327b8bdaeb95",
+      "last_modified": "Thu Oct 15 20:03:19 2026"
+    },
+    "jester_lstm_epoch1.pth": {
+      "size_bytes": 152217356,
+      "size_mb": 145.17,
+      "sha256": "bbd0c7856bdd740ff95f3e5bd02ae7a19f25bfeb14d1d01a4ae5fd61f0bc0488",
+      "last_modified": "Thu Oct 15 19:56:11 2026"
+    },
+    "jester_lstm_epoch2.pth": {
+      "size_bytes": 152279436,
+      "size_mb": 145.22,
+      "sha256": "114adacf2053c3eead0657d927cc04d0e45ba2e970d384a9ffcbee6ee6d5f727",
+      "last_modified": "Thu Oct 15 19:59:45 2026"
+    },
+    "jester_lstm_epoch3.pth": {
+      "size_bytes": 152318156,
+      "size_mb": 145.26,
+      "sha256": "9bbb985333f96efc6f19f74712dcbbda0d8c9c8ea7b5ad6248b88e9b0c391c3f",
+      "last_modified": "Thu Oct 15 20:03:19 2026"
+    },
+    "jester_lstm_finetuned.pth": {
+      "size_bytes": 152293464,
+      "size_mb": 145.24,
+      "sha256": "79680dec2886294a9969e9f63f420fc9a203dda758cfa8e340f73f4e4b1a7209",
+      "last_modified": "Thu Oct 15 20:16:12 2026"
+    },
+    "jester_lstm_finetuned_epoch1.pth": {
+      "size_bytes": 152290548,
+      "size_mb": 145.24,
+      "sha256": "8b75d8d9455f6fda70746ec6e47290df3fdc2be52b2b9694a147e35399b4899d",
+      "last_modified": "Thu Oct 15 20:12:42 2026"
+    },
+    "jester_lstm_finetuned_epoch2.pth": {
+      "size_bytes": 152293556,
+      "size_mb": 145.24,
+      "sha256": "20e9659a2caeb0c1f615f91f5b25d3aadd6ac30ce615b7081d6cf031c5767a05",
+      "last_modified": "Thu Oct 15 20:16:12 2026"
+    },
+    "jester_lstm_spatial.pth": {
+      "size_bytes": 171308496,
+      "size_mb": 163.37,
+      "sha256": "c33cd3ed3641d52be40bdd526279ed23a4e7e28617f992f9597c2302f2c41861",
+      "last_modified": "Thu Oct 15 23:20:10 2026"
+    },
+    "jester_lstm_spatial_epoch1.pth": {
+      "size_bytes": 171344556,
+      "size_mb": 163.41,
+      "sha256": "2c304c4a8e7fc6c02f60e957cd912f263212ee2dd6cb0491e2df020952db1990",
+      "last_modified": "Thu Oct 15 23:00:24 2026"
+    },
+    "jester_lstm_spatial_epoch2.pth": {
+      "size_bytes": 171422252,
+      "size_mb": 163.48,
+      "sha256": "f3686eade4431981313ff7523baecc27fff80ef89ad6a2ede3b0b485bdca8a21",
+      "last_modified": "Thu Oct 15 23:04:24 2026"
+    },
+    "jester_lstm_spatial_epoch3.pth": {
+      "size_bytes": 171594284,
+      "size_mb": 163.65,
+      "sha256": "9e1cfa33d51d1a64be4f6b6d1dd7ede65e8ade07967cdc95558a5649f3fd0431",
+      "last_modified": "Thu Oct 15 23:08:20 2026"
+    },
+    "jester_lstm_spatial_epoch4.pth": {
+      "size_bytes": 171520940,
+      "size_mb": 163.58,
+      "sha256": "eb1ba8044d75eb433633b6d207d61a66fb111963d0878374f0bc887c2a65857b",
+      "last_modified": "Thu Oct 15 23:12:17 2026"
+    },
+    "jester_lstm_spatial_epoch5.pth": {
+      "size_bytes": 171376876,
+      "size_mb": 163.44,
+      "sha256": "75335008140f1e9695e275eb4a80a846c18d3270fae266a50bb64a3e85efccbf",
+      "last_modified": "Thu Oct 15 23:16:15 2026"
+    },
+    "jester_lstm_spatial_epoch6.pth": {
+      "size_bytes": 171308588,
+      "size_mb": 163.37,
+      "sha256": "67ddc0d9a2547728e9d109321cd973ac621008b1ebf134c9896ca6a42c3eac1b",
+      "last_modified": "Thu Oct 15 23:20:11 2026"
+    },
+    "jester_lstm_spatial_tuned.pth": {
+      "size_bytes": 171357032,
+      "size_mb": 163.42,
+      "sha256": "64183f508d98f732316b4938ebb093828f5e2016b78a3206a37864d44ce7cda1",
+      "last_modified": "Fri Oct 16 00:51:56 2026"
+    },
+    "jester_lstm_spatial_tuned_epoch1.pth": {
+      "size_bytes": 171414340,
+      "size_mb": 163.47,
+      "sha256": "cdec54e6afc97a3a0e1faf5c9d3706b698d9c8c0fa966e602b6b7d042eae6786",
+      "last_modified": "Fri Oct 16 00:45:52 2026"
+    },
+    "jester_lstm_spatial_tuned_epoch2.pth": {
+      "size_bytes": 171403204,
+      "size_mb": 163.46,
+      "sha256": "ccfd86f84e0eedbcf8c89c81c159a0d4360e5de873d8809594526edf2c7134a0",
+      "last_modified": "Fri Oct 16 00:48:50 2026"
+    },
+    "jester_lstm_spatial_tuned_epoch3.pth": {
+      "size_bytes": 171357060,
+      "size_mb": 163.42,
+      "sha256": "1c9612c8edb99b4e1ba0975b9401bfa020e0607ab964d5f9ea8419fd95b799d4",
+      "last_modified": "Fri Oct 16 00:51:57 2026"
+    },
+    "jester_lstm_spatial_tuned_epoch4.pth": {
+      "size_bytes": 171420356,
+      "size_mb": 163.48,
+      "sha256": "880cda71d41290d7b3fb73f5b3113b5fb6dbe246dbd7c622345c21f1b697cca7",
+      "last_modified": "Fri Oct 16 00:12:48 2026"
+    },
+    "jester_lstm_spatial_tuned_epoch5.pth": {
+      "size_bytes": 171327620,
+      "size_mb": 163.39,
+      "sha256": "17f23d872f93bec1bd34ba4033c83fda065dc0a45ebf935bdc6a2a0c70fe538e",
+      "last_modified": "Fri Oct 16 00:15:50 2026"
+    },
+    "jester_lstm_spatial_tuned_epoch6.pth": {
+      "size_bytes": 171256004,
+      "size_mb": 163.32,
+      "sha256": "c2888807c5f4fb44e6cce52f760361d8c0ce0309f8c6ba851a163eaa6b78d41f",
+      "last_modified": "Fri Oct 16 00:18:53 2026"
+    },
+    "jester_r3d_18.pth": {
+      "size_bytes": 132752562,
+      "size_mb": 126.6,
+      "sha256": "6fa25ad54fb533bdc3f227be3216766d2eb8df5fba0356e1229e26c7561890dd",
+      "last_modified": "Mon Oct  5 11:50:55 2026"
+    }
+  }
+}

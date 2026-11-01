@@ -28,6 +28,8 @@ data/
 # Ignores the heavy ResNet backbone saves
 weights/
 cloud_backend/weights/
+weights_v1.0.0_backup/*.pth
+weights_v1.0.0_backup/*.pt
 *.pth
 *.pt
 *.ckpt
