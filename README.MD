@@ -1,81 +1,101 @@
 # STARK OS // IronMan Gesture-Controlled Desktop System
 
 [![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.4+-EE4C2C?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![MediaPipe](https://img.shields.io/badge/MediaPipe-Tasks%20Vision-00A499?logo=google&logoColor=white)](https://developers.google.com/mediapipe)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![AWS Lambda](https://img.shields.io/badge/AWS-Lambda%20Container-FF9900?logo=awslambda&logoColor=white)](https://aws.amazon.com/lambda/)
 [![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-[![GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/features/actions)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/features/actions)
+[![Release](https://img.shields.io/badge/Release-v2.0.0-gold)](#)
 
-A production-grade, real-time gesture control system inspired by Tony Stark's holographic interface. Built to bridge the gap between high-FPS edge computer vision, cloud-native inference microservices, and automated MLOps infrastructure.
+A production-grade, real-time gesture control system inspired by Tony Stark's holographic interface. Features a hybrid edge-cloud architecture combining local sub-millisecond hand tracking via **MediaPipe Tasks**, a fine-tuned 9-class deep **ResNet-50** classifier, and a scale-to-zero serverless microservice running in **AWS Lambda**.
 
 ---
 
 ## 1. System Architecture
 
-The project decouples edge webcam capture and desktop input automation from heavy deep-learning model execution via a scale-to-zero serverless cloud backend.
+The system decouples edge webcam capture and desktop input automation from heavy deep-learning model execution via a scale-to-zero serverless cloud backend or local GPU hardware acceleration.
 
 ```mermaid
 graph TD
     subgraph Local Client ["Local Client (Windows Standalone Exe)"]
         Webcam["Webcam (DirectShow 30 FPS)"] --> FrameWorker["Threaded Cloud Worker"]
-        FrameWorker -->|"POST /predict (320x320)"| CloudAPI
-        CloudAPI -->|"JSON Prediction & Confidence"| Dispatcher["Stateful Action Dispatcher"]
-        Dispatcher -->|"Debounced Keystrokes"| OS["Windows Desktop Automation (PyAutoGUI)"]
+        Webcam --> MP["MediaPipe HandLandmarker (Edge CPU)"]
+        MP --> Direction["Direction & Grip Resolver"]
+        Direction -->|"Point Left / Right, Fist Hold, Palm Release"| Dispatcher["Stateful Action Dispatcher"]
+        FrameWorker -->|"POST /predict (224x224 JPEG)"| CloudAPI
+        CloudAPI -->|"9-Class Prediction & Confidence"| Consensus["Temporal Consensus Filter"]
+        Consensus --> Dispatcher
+        Dispatcher -->|"Debounced Keystrokes & Hotkeys"| OS["Windows Desktop Automation (PyAutoGUI / Win32)"]
         Webcam --> HUD["PiP Video HUD (Win32 ToolWindow)"]
         Audio["Stark OS Audio Manager"] --> HUD
     end
 
-    subgraph AWS Cloud ["AWS Cloud (Scale-to-Zero Microservice)"]
+    subgraph AWS Cloud ["AWS Cloud (Scale-to-Zero Microservice in us-east-2)"]
         CloudAPI["AWS Lambda Function URL (Public HTTPS)"]
         CloudAPI --> Adapter["AWS Lambda Web Adapter"]
-        Adapter --> FastAPIEngine["FastAPI Microservice (Uvicorn)"]
-        FastAPIEngine --> ResNet["ResNet-50 Classifier (PyTorch CPU)"]
+        Adapter --> FastAPIEngine["FastAPI Microservice (Uvicorn v2.0.0)"]
+        FastAPIEngine --> ResNet["ResNet-50 Classifier (9 HaGRID Classes)"]
     end
 
     subgraph CICD ["MLOps & CI/CD Pipeline (GitHub Actions)"]
         Push["git push origin main"] --> Runner["Ubuntu Runner"]
-        S3["Amazon S3 Weights Cache"] -->|"Download .pth"| Runner
-        Runner -->|"docker build"| ECR["Amazon ECR Registry"]
+        S3["Amazon S3 Weights Cache (us-east-2)"] -->|"Download hagrid_resnet50_finetuned.pth"| Runner
+        Runner -->|"docker build"| ECR["Amazon ECR Registry (gesture-control)"]
         Runner -->|"Deploy / Update"| CloudAPI
     end
 ```
 
 ---
 
-## 2. Recognized Gestures & OS Actions
+## 2. Recognized Gestures & OS Actions (Release 2.0.0)
 
-| Gesture Class | Trained Dataset | Desktop OS Trigger | Action Description |
+Release 2.0.0 introduces **Modal Task-Switching (Alt-Tab)** with directional navigation and **Tab Closing (`xsign`)**, bringing total gesture support to **9 distinct classes**:
+
+| Gesture Class | Visual Pose | Desktop OS Trigger | Action Description |
 | :--- | :--- | :--- | :--- |
-| **`mute`** | HaGRID Fine-Tuned | `Volume Mute / Unmute` | Toggles master Windows audio |
-| **`take_photo`** | HaGRID Fine-Tuned | `Win + Shift + S` | Triggers Windows Snipping Tool screenshot |
-| **`thumb_index2`** | HaGRID Fine-Tuned | `Win + D` | Shows / minimizes desktop workspace |
-| **`heart`** | HaGRID Fine-Tuned | Launch / Focus Steam | Opens or brings the Steam client to the foreground |
-| **`no_gesture`** | HaGRID Fine-Tuned | *None* | Passive observation mode |
+| **`xsign`** | Crossed forearms / wrists | `Ctrl + W` | Closes active browser tab, code editor tab, or document |
+| **`grabbing`** | Closed fist / grip hold | Hold `Alt + Tab` | Opens and maintains modal Windows task switcher |
+| **`point` (Right)** | Index finger pointing right | `Tab` (while holding `Alt`) | Steps forward to the next application window |
+| **`point` (Left)** | Index finger pointing left | `Shift + Tab` (while holding `Alt`) | Steps backward to the previous application window |
+| **`stop`** | Flat open palm | Release `Alt` / `Enter` | Selects highlighted application and dismisses task switcher |
+| **`thumb_index2`** | L-shape / thumb & index | `Win + D` | Shows / minimizes desktop workspace (immune to HUD hide) |
+| **`heart`** | Two hands forming heart | Launch Steam | Opens or brings the Steam client to the foreground |
+| **`mute`** | Index finger over closed mouth | `Volume Mute / Unmute` | Toggles master Windows audio |
+| **`take_photo`** | Camera framing / box | `Win + Shift + S` | Triggers Windows Snipping Tool screenshot |
+| **`no_gesture`** | Relaxed / neutral hand | *None* | Passive observation state (no action triggered) |
+
+> [!TIP]
+> Example images with HUD banners for all 9 gestures are cataloged in [`example_gestures/`](example_gestures/).
 
 ---
 
 ## 3. Key Client Features
 
+- **Hybrid Edge Landmark & Cloud Deep-Learning Pipeline**:
+  - **MediaPipe HandLandmarker**: Sub-millisecond single-handed finger curl and pointing vector resolution directly on CPU.
+  - **Fine-Tuned ResNet-50**: Evaluates complex static hand poses (`xsign`, `heart`, `thumb_index2`, `mute`, `take_photo`) with **98.11% accuracy**.
+- **Temporal Consensus & Transition Suppression**:
+  - Multi-frame consensus filtering (`xsign`: 2 frames, `thumb_index2`: 3 frames, `mute`: 4 frames, `grabbing`: 5 frames) eliminates accidental triggers.
+  - **Global 0.90s inter-action cooldown** prevents hotkey flip-flopping when lowering or switching hands.
+  - **Two-handed guard**: Modal one-handed Alt-Tab actions are suppressed whenever two hands enter the frame, preventing fist conflicts when crossing arms for `xsign`.
 - **Floating Picture-in-Picture Tool Window**:
   - Implements `WS_EX_TOOLWINDOW` and `WS_EX_TOPMOST` via native Win32 `ctypes`.
-  - Stays pinned to the top-right corner of your screen without stealing window focus and is immune to `Win + D` minimize storms.
-- **Asynchronous Dual-Threaded Pipeline**:
-  - The OpenCV capture and HUD render loop maintains a steady 30–60 FPS.
-  - Network requests run in a background daemon thread with connection pooling and non-blocking state exchange.
-- **Startup Grace Period & Volume Quieting**:
-  - Gestures are disarmed during the first 2.0 seconds of bootup to prevent accidental hotkey triggers while adjusting hands.
-  - Startup interface SFX are dynamically volume-scaled (30% default) for comfortable everyday use.
+  - Pinned to the top-right corner without stealing keyboard focus or disappearing when desktop is minimized.
+- **Asynchronous Dual-Threaded Execution**:
+  - OpenCV capture and Stark HUD maintain **30–60 FPS** smoothly.
+  - Cloud inference and HTTP pooling run in a background daemon thread.
 - **Global Emergency Killswitch**:
-  - Pressing `Ctrl + Alt + Q` from **any** application immediately terminates the client without needing window focus.
+  - Pressing `Ctrl + Alt + Q` from **any** window terminates the application immediately.
 
 ### Interactive In-App Controls
 | Shortcut | Function |
 | :---: | :--- |
-| `[A]` | Toggle OS Actions on/off (switches between active and observation mode) |
+| `[A]` | Toggle OS Actions on/off (observation mode vs. active execution) |
 | `[P]` | Pin / Unpin Always-on-Top Picture-in-Picture mode |
 | `[H]` | Toggle bottom-left shortcut hint legend |
-| `[T]` | Cycle confidence threshold (`0.70` $\rightarrow$ `0.80` $\rightarrow$ `0.85` $\rightarrow$ `0.90` $\rightarrow$ `0.95`) |
+| `[T]` | Cycle confidence threshold (`0.70` $\rightarrow$ `0.75` $\rightarrow$ `0.80` $\rightarrow$ `0.85` $\rightarrow$ `0.90` $\rightarrow$ `0.95`) |
 | `[Q]` | Exit application |
 | `[Ctrl + Alt + Q]` | **Global emergency killswitch** from anywhere in Windows |
 
@@ -84,30 +104,28 @@ graph TD
 ## 4. Quick Start
 
 ### Option A: Standalone Windows Executable (No Python Required)
-1. Download `IronManClient-v1.0-Windows.zip` from releases or build directory:
+1. Download `IronManClient-v2.0.0-Windows.zip` from releases or build directory:
    ```text
-   dist/IronManClient-v1.0-Windows.zip (75.8 MB)
+   dist/IronManClient-v2.0.0-Windows.zip (111.8 MB)
    ```
 2. Extract the archive anywhere on your Windows PC.
-3. Double-click `IronManClient.exe` (or `START_IRONMAN.bat`).
-   - *The client automatically connects to the live production AWS Lambda endpoint out of the box!*
+3. Run `IronManClient.exe`.
+   - *The client automatically connects to the production AWS Lambda v2.0.0 endpoint out of the box!*
 
-### Option B: Run from Source (Developer Mode)
+### Option B: Run from Source (Local DirectML GPU Acceleration)
+When running from source with PyTorch installed, the client automatically routes inference through your discrete GPU (AMD via DirectML or NVIDIA via CUDA) for <2 ms local execution:
 1. Clone the repository:
    ```bash
    git clone https://github.com/Nadeem-Elsayed/Iron-Man.git
    cd Iron-Man
    ```
-2. Create and activate a virtual environment:
+2. Activate your virtual environment and install dependencies:
    ```bash
    python -m venv .venv
-   .\.venv\Scripts\activate   # Windows PowerShell
-   ```
-3. Install client requirements:
-   ```bash
+   .\.venv\Scripts\activate
    pip install -r local_client/requirements.txt
    ```
-4. Run the client:
+3. Run the client:
    ```bash
    python local_client/capture.py
    ```
@@ -116,13 +134,19 @@ graph TD
 
 ## 5. Cloud & MLOps Infrastructure
 
-- **Serverless Compute**: Hosted on **AWS Lambda** as an OCI Container Image using the official **AWS Lambda Web Adapter** (`awsguru/aws-lambda-adapter:0.9.0`).
-- **Scale-to-Zero Cost Model**: When no client requests are arriving, active compute scales down to **zero running containers**, resulting in **$0.00/month idle cost**.
-- **Automated CI/CD**: Pushing to the `main` branch triggers a GitHub Actions workflow that:
-  1. Pulls model weights from secure cloud storage (Amazon S3).
-  2. Compiles the optimized CPU PyTorch container.
-  3. Pushes container layers to **Amazon ECR**.
-  4. Automatically deploys/updates the AWS Lambda function and its public HTTPS Function URL.
+- **Serverless Compute**: Containerized microservice running on **AWS Lambda** in the project's selected Region (`us-east-2`) with **AWS Lambda Web Adapter** (`awsguru/aws-lambda-adapter:0.9.0`).
+- **Scale-to-Zero Cost Model**: When no client frames are sent, compute scales to zero active instances ($0.00 idle cost).
+- **Automated CI/CD Pipeline**:
+  - Triggered on push to `main` via `.github/workflows/deploy.yml`.
+  - Downloads production model weights from **Amazon S3** (`s3://ironman-models-323443471817/hagrid_resnet50_finetuned.pth`).
+  - Builds the container and pushes image tags to **Amazon ECR** (`gesture-control`).
+  - Updates the AWS Lambda function code and verifies readiness via the `/health` endpoint.
+
+### Cloud Microservice Health & Endpoints
+- **Health Check**: `GET /health`  
+  Returns microservice status, hardware accelerator, supported gesture classes, and version.
+- **Inference**: `POST /predict`  
+  Accepts multipart/form-data image frame (JPEG/PNG) and returns predicted gesture, confidence score, full probability distribution, and latency.
 
 ---
 
