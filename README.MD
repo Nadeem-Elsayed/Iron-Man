@@ -11,6 +11,8 @@
 
 A production-grade, real-time gesture control system inspired by Tony Stark's holographic interface. Features a hybrid edge-cloud architecture combining local sub-millisecond hand tracking via **MediaPipe Tasks**, a fine-tuned 9-class deep **ResNet-50** classifier, and a scale-to-zero serverless microservice running in **AWS Lambda**.
 
+
+Demo: <video src="https://youtu.be/BM82MEqcGY8" width="320" height="240" controls></video>
 ---
 
 ## 1. System Architecture
