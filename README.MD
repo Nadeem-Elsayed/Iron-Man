@@ -11,8 +11,18 @@
 
 A production-grade, real-time gesture control system inspired by Tony Stark's holographic interface. Features a hybrid edge-cloud architecture combining local sub-millisecond hand tracking via **MediaPipe Tasks**, a fine-tuned 9-class deep **ResNet-50** classifier, and a scale-to-zero serverless microservice running in **AWS Lambda**.
 
+---
 
-Demo: <video src="https://youtu.be/BM82MEqcGY8" width="320" height="240" controls></video>
+## Demo Video
+
+<p align="center">
+  <a href="https://youtu.be/BM82MEqcGY8" target="_blank" rel="noopener noreferrer">
+    <img src="https://img.youtube.com/vi/BM82MEqcGY8/maxresdefault.jpg" alt="STARK OS Gesture Control Live Demonstration" width="720">
+  </a>
+  <br>
+  <em>Click the image above to watch the demonstration on YouTube.</em>
+</p>
+
 ---
 
 ## 1. System Architecture
@@ -111,7 +121,7 @@ Release 2.0.0 introduces **Modal Task-Switching (Alt-Tab)** with directional nav
    dist/IronManClient-v2.0.0-Windows.zip (111.8 MB)
    ```
 2. Extract the archive anywhere on your Windows PC.
-3. Run `IronManClient.exe`.
+3. Run `START_IRONMAN.bat` (or `IronManClient.exe`).
    - *The client automatically connects to the production AWS Lambda v2.0.0 endpoint out of the box!*
 
 ### Option B: Run from Source (Local DirectML GPU Acceleration)

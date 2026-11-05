@@ -62,3 +62,4 @@ IronMan v2.0.0 adds modal window management and browser tab dismissal, powered b
    - `[T]` Cycle confidence threshold
    - `[Q]` Quit
    - `[Ctrl + Alt + Q]` Global emergency killswitch
+
