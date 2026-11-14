@@ -56,17 +56,21 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-# Builds high-performance distribution folder: dist/IronManClient/IronManClient.exe
+# Builds self-contained standalone single-file executable: dist/IronManClient.exe
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
     [],
-    exclude_binaries=True,
     name='IronManClient',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -74,16 +78,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='local_client/cool_graphics/IronManIcon.ico',
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='IronManClient',
 )
 

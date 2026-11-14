@@ -282,7 +282,13 @@ def main():
     backend = cv2.CAP_DSHOW if cv2.__file__ and hasattr(cv2, 'CAP_DSHOW') else cv2.CAP_ANY
     cap = cv2.VideoCapture(args.camera, backend)
     if not cap.isOpened():
-        print(f"Error: Unable to open camera {args.camera}")
+        print(f"\n[ERROR] Unable to open camera device index {args.camera}.")
+        print("Please ensure your webcam is connected and not currently used by another application.")
+        if getattr(sys, 'frozen', False):
+            try:
+                input("\nPress Enter to exit...")
+            except Exception:
+                pass
         return
 
     # Set explicit Windows AppUserModelID so taskbar groups under this standalone IronMan application
@@ -515,4 +521,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        if getattr(sys, 'frozen', False):
+            try:
+                input("\n[CRASH] Application encountered an error. Press Enter to exit...")
+            except Exception:
+                pass
