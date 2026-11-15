@@ -16,8 +16,8 @@ A production-grade, real-time gesture control system inspired by Tony Stark's ho
 ## Demo Video
 
 <p align="center">
-  <a href="https://youtu.be/BM82MEqcGY8" target="_blank" rel="noopener noreferrer">
-    <img src="https://img.youtube.com/vi/BM82MEqcGY8/maxresdefault.jpg" alt="STARK OS Gesture Control Live Demonstration" width="720">
+  <a href="https://youtu.be/c-M8j9RBNkQ" target="_blank" rel="noopener noreferrer">
+    <img src="https://img.youtube.com/vi/c-M8j9RBNkQ/maxresdefault.jpg" alt="STARK OS Gesture Control Live Demonstration" width="720">
   </a>
   <br>
   <em>Click the image above to watch the demonstration on YouTube.</em>
